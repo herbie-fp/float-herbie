@@ -7,9 +7,17 @@
           [real->float (real? exact-positive-integer? exact-positive-integer? . -> . float?)]
           [float->real (float? . -> . real?)]
           [bf->float (bigfloat? exact-positive-integer? exact-positive-integer? . -> . float?)]
-          [float->bf (float? . -> . real?)]
+          [float->bf (float? . -> . bigfloat?)]
           [ordinal->float (exact-integer? exact-positive-integer? exact-positive-integer? . -> . float?)]
           [float->ordinal (float? . -> . exact-integer?)]
+          [float-infinite? (float? . -> . boolean?)]
+          [float-nan? (float? . -> . boolean?)]
+
+          [float-= (float? float? . -> . boolean?)]
+          [float-> (float? float? . -> . boolean?)]
+          [float-< (float? float? . -> . boolean?)]
+          [float->= (float? float? . -> . boolean?)]
+          [float-<= (float? float? . -> . boolean?)]
 
           [float-sqrt (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-cbrt (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
@@ -21,16 +29,13 @@
           [float-log1p (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-exp (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-exp2 (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
-          [float-exp10 (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
+       ;  [float-exp10 (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-expm1 (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
-          [float-cos (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-sin (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
+          [float-cos (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-tan (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
-          [float-sec (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
-          [float-csc (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
-          [float-cot (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
-          [float-acos (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-asin (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
+          [float-acos (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-atan (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-cosh (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
           [float-sinh (exact-positive-integer? exact-positive-integer? . -> . (float? . -> . float?))]
@@ -47,7 +52,9 @@
           [float-mul (exact-positive-integer? exact-positive-integer? . -> . (float? float? . -> . float?))]
           [float-div (exact-positive-integer? exact-positive-integer? . -> . (float? float? . -> . float?))]
           [float-pow (exact-positive-integer? exact-positive-integer? . -> . (float? float? . -> . float?))]
-          [float-atan2 (exact-positive-integer? exact-positive-integer? . -> . (float? float? . -> . float?))]))
+          [float-atan2 (exact-positive-integer? exact-positive-integer? . -> . (float? float? . -> . float?))]
+
+          [float-fma (exact-positive-integer? exact-positive-integer? . -> . (float? float? float? . -> . float?))]))
 
 (struct float (val es nbits)
         #:transparent
@@ -139,6 +146,14 @@
    [mpfr-div 'mpfr_div]
    [mpfr-pow 'mpfr_pow]
    [mpfr-atan2 'mpfr_atan2])
+
+  (define (mpfr-fma x y z)
+    (define fun (get-mpfr-fun 'mpfr_fma (_fun _mpfr-pointer _mpfr-pointer _mpfr-pointer _mpfr-pointer _rnd_t -> _int)))
+    (define r (bf 0))
+    (define t (fun r x y z (bf-rounding-mode)))
+    (mpfr_subnormalize r t (bf-rounding-mode))
+    (mpfr_check_range r 0 (bf-rounding-mode))
+    r)
 )
 (require (submod "." hairy))
 
@@ -191,10 +206,19 @@
     val))
 
 (define (float->ordinal x)
-  (define-values (emin emax) (set-mpfr-exp (float-es x) (float-nbits x)))
-  (define val (bigfloat->ordinal (float-val x)))
-  (set-mpfr-exp2 emin emax)
-  val)
+  (parameterize ([bf-precision (- (float-nbits x) (float-es x))])
+    (define-values (emin emax) (set-mpfr-exp (float-es x) (float-nbits x)))
+    (define val (bigfloat->ordinal (float-val x)))
+    (set-mpfr-exp2 emin emax)
+    val))
+
+;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;;;;;
+
+(define (float-infinite? x)
+  (bfinfinite? (float-val x)))
+
+(define (float-nan? x)
+  (bfnan? (float-val x)))
 
 ;;;;;;;;;;;;;; Operators ;;;;;;;;;;;;;;;;;;
 
@@ -262,8 +286,35 @@
  [float-pow       mpfr-pow]
  [float-atan2     mpfr-atan2])
 
+(define (float-fma es nbits)
+  (λ (x y z)
+    (parameterize ([bf-precision (- nbits es)])
+      (define-values (emin emax) (set-mpfr-exp es nbits))
+      (define r (mpfr-fma (float-val x) (float-val y) (float-val z)))
+      (set-mpfr-exp2 emin emax)
+      (float r es nbits))))
+
+(define-syntax-rule (float-comparator name bf-cmp)
+  (define (name x y)
+    (bf-cmp (float-val x) (float-val y))))
+
+(define-syntax-rule (float-comparators [name bf-cmp] ...)
+  (begin (float-comparator name bf-cmp) ...))
+
+(float-comparators
+ [float-= bf=]
+ [float-> bf>]
+ [float-< bf<]
+ [float->= bf>=]
+ [float-<= bf<=])
+
 (module+ test
-  (define x (real->float 1e-300 11 64))
-  (define y (real->float 1e-22 11 64))
-  (define r ((float-sqrt 11 64) x))
-  (displayln r))
+  (require rackunit)
+
+  (define rs (for/list ([i (in-range 100)]) (random)))
+  (define re (for/list ([i (in-range 100)]) (- (random 0 632) 324)))
+  (define rf (map (λ (s e) (real->float (* s (expt 2 e)) 11 64)) rs re))
+  (for ([f rf])
+    (check-equal? f (real->float (float->real f) 11 64))
+    (check-equal? f (bf->float (float->bf f) 11 64))
+    (check-equal? f (ordinal->float (float->ordinal f) 11 64))))
