@@ -74,7 +74,6 @@
   (define mpfr_get_emax (get-mpfr-fun 'mpfr_get_emax (_fun -> _exp_t)))
   (define mpfr_set_emin (get-mpfr-fun 'mpfr_set_emin (_fun _exp_t -> _int)))
   (define mpfr_set_emax (get-mpfr-fun 'mpfr_set_emax (_fun _exp_t -> _int)))
-  (define mpfr_check_range (get-mpfr-fun 'mpfr_check_range (_fun _mpfr-pointer _int _rnd_t -> _int)))
   (define mpfr_subnormalize (get-mpfr-fun 'mpfr_subnormalize (_fun _mpfr-pointer _int _rnd_t -> _int)))
 
   ;;; 1-ary functions
@@ -86,7 +85,6 @@
         (define r (bf 0))
         (define t (fun r x (bf-rounding-mode)))
         (mpfr_subnormalize r t (bf-rounding-mode))
-        (mpfr_check_range r 0 (bf-rounding-mode))
         r)))
 
   (define-syntax-rule (mpfr-1ary-funs [name mpfr-name] ...)
@@ -133,7 +131,6 @@
         (define r (bf 0))
         (define t (fun r x y (bf-rounding-mode)))
         (mpfr_subnormalize r t (bf-rounding-mode))
-        (mpfr_check_range r 0 (bf-rounding-mode))
         r)))
 
   (define-syntax-rule (mpfr-2ary-funs [name mpfr-name] ...)
@@ -152,7 +149,6 @@
     (define r (bf 0))
     (define t (fun r x y z (bf-rounding-mode)))
     (mpfr_subnormalize r t (bf-rounding-mode))
-    (mpfr_check_range r 0 (bf-rounding-mode))
     r)
 )
 (require (submod "." hairy))
@@ -176,7 +172,7 @@
   (parameterize ([bf-precision (- nbits es)])
     (define-values (emin emax) (set-mpfr-exp es nbits))
     (define x* (bf x))
-    (mpfr_check_range x* 0 (bf-rounding-mode))
+    (mpfr_subnormalize x* 0 (bf-rounding-mode))
     (define val (float x* es nbits))
     (set-mpfr-exp2 emin emax)
     val))
@@ -188,29 +184,58 @@
   (parameterize ([bf-precision (- nbits es)])
     (define-values (emin emax) (set-mpfr-exp es nbits))
     (define x* (bfcopy x))
-    (mpfr_check_range x* 0 (bf-rounding-mode))
-    (define val (float x* es nbits))
+    (mpfr_subnormalize x* 0 (bf-rounding-mode))
     (set-mpfr-exp2 emin emax)
-    val))
+    (float x* es nbits)))
 
 (define (float->bf x)
   (bfcopy (float-val x)))
 
 (define (ordinal->float x es nbits)
+  (define sig (- nbits es))
   (parameterize ([bf-precision (- nbits es)])
     (define-values (emin emax) (set-mpfr-exp es nbits))
-    (define x* (ordinal->bigfloat x))
-    (mpfr_check_range x* 0 (bf-rounding-mode))
-    (define val (float x* es nbits))
+    (define x* (abs x))
+    (define infty (* (expt 2 (- sig 1)) (- (expt 2 es) 1)))
+    (define val
+      (cond
+       [(> x* infty) +nan.bf]
+       [(= x* infty) +inf.bf]
+       [(zero? x*) 0.bf]
+       [(< x* (expt 2 (- sig 1)))
+        (define unit (ordinal->bigfloat (expt 2 (- sig 1))))
+        (define m
+          (bfcopy
+            (parameterize ([bf-precision 4096])
+              (bf* unit (bf x*)))))
+        (mpfr_subnormalize m 0 (bf-rounding-mode))
+        m]
+       [else
+        (ordinal->bigfloat (+ x* (* (- sig 1) (expt 2 (- sig 1))) 1))]))
     (set-mpfr-exp2 emin emax)
-    val))
+    (float (if (negative? x) (bf- val) val) es nbits)))
 
 (define (float->ordinal x)
-  (parameterize ([bf-precision (- (float-nbits x) (float-es x))])
+  (define sig (- (float-nbits x) (float-es x)))
+  (parameterize ([bf-precision sig])
     (define-values (emin emax) (set-mpfr-exp (float-es x) (float-nbits x)))
-    (define val (bigfloat->ordinal (float-val x)))
+    (define x* (bfabs (float-val x)))
+    (define enorm (- 2 (mpfr_get_emax)))
+    (define ex (+ (bigfloat-exponent x*) (- sig 1)))
+    (define val
+      (cond
+       [(bfnan? x*)
+        (+ (* (expt 2 (- sig 1)) (expt 2 (float-es x))) 1)]
+       [(bf= x* +inf.bf)
+        (* (expt 2 (- sig 1)) (- (expt 2 (float-es x)) 1))]
+       [(< ex enorm)
+        (define unit (ordinal->bigfloat (expt 2 (- sig 1))))
+        (parameterize ([bf-precision 4096])
+          (bigfloat->real (bffloor (bf/ x* unit))))]
+       [else
+        (- (bigfloat->ordinal x*) (* (- sig 1) (expt 2 (- sig 1))) 1)]))
     (set-mpfr-exp2 emin emax)
-    val))
+    (if (bfnegative? (float-val x)) (- val) val)))
 
 ;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;;;;;
 
@@ -310,11 +335,13 @@
 
 (module+ test
   (require rackunit)
+  (define es 8)
+  (define nbits 32)
 
-  (define rs (for/list ([i (in-range 100)]) (random)))
-  (define re (for/list ([i (in-range 100)]) (- (random 0 632) 324)))
-  (define rf (map (λ (s e) (real->float (* s (expt 2 e)) 11 64)) rs re))
+  (define rs (append (for/list ([i (in-range 100)]) (random)) (list +inf.0 -inf.0 +nan.0)))
+  (define re (append (for/list ([i (in-range 100)]) (- (random 0 632) 324)) (list 1 1 1)))
+  (define rf (map (λ (s e) (real->float (* s (expt 10 e)) es nbits)) rs re))
   (for ([f rf])
-    (check-equal? f (real->float (float->real f) 11 64))
-    (check-equal? f (bf->float (float->bf f) 11 64))
-    (check-equal? f (ordinal->float (float->ordinal f) 11 64))))
+    (check-equal? (real->float (float->real f) es nbits) f)
+    (check-equal? (bf->float (float->bf f) es nbits) f)
+    (check-equal? (ordinal->float (float->ordinal f) es nbits) f)))
