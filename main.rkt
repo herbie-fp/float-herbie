@@ -46,7 +46,7 @@
       nbits
       (disjoin float-infinite? float-nan?))
 
-    (register-fl-operator! '- '- 1 (float-neg es nbits) bf- ival-neg)
+    (register-fl-operator! '- 'neg 1 (float-neg es nbits) bf- ival-neg)
     (register-fl-operator! '+ '+ 2 (float-add es nbits) bf+ ival-add)
     (register-fl-operator! '- '- 2 (float-sub es nbits) bf- ival-sub)
     (register-fl-operator! '* '* 2 (float-mul es nbits) bf* ival-mult)
