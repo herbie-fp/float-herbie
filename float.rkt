@@ -215,7 +215,7 @@
         (define unit (ordinal->bigfloat 1))
         (define exp-offset (floor-pow2 x*))
         (define base (bfshift unit exp-offset))
-        (define diff (- x (expt 2 exp-offset)))
+        (define diff (- x* (expt 2 exp-offset)))
         (bf+ base (bf* unit (bf diff)))]
        [else
         (ordinal->bigfloat (+ x* (* (- sig 2) (expt 2 (- sig 1))) 1))]))
