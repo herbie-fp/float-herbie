@@ -22,6 +22,15 @@
   (match name
    [(list 'float es nbits)
 
+    ; Float
+    (define (register-fl-constant! cnst fl-impl bf-impl ival-impl)
+      (define cnst-name (sym-append cnst '.fl es '- nbits))
+      (define info-dict
+        (list (cons 'fl fl-impl)
+              (cons 'bf bf-impl)
+              (cons 'ival ival-impl)))
+      (register-constant! cnst cnst-name name info-dict))
+
     ; Operator
     (define (register-fl-operator! op op-name argc fl-impl bf-impl ival-impl
                 #:nonffi [nonffi-imlp #f] #:itype [itype #f] #:otype [otype #f])
@@ -45,6 +54,27 @@
       float->ordinal
       nbits
       (disjoin float-infinite? float-nan?))
+
+    (register-fl-constant! 'PI
+      (λ () ((float-mul es nbits) (real->float 2 es nbits)
+                                  ((float-acos es nbits) (real->float 0 es nbits))))
+      (λ () pi.bf)
+      ival-pi)
+
+    (register-fl-constant! 'E
+      (λ () ((float-exp es nbits) (real->float 1 es nbits)))
+      (λ () (bfexp 1.bf))
+      ival-e)
+
+    (register-fl-constant! 'INFINITY
+      (λ () (real->float +inf.0 es nbits))
+      (λ () +inf.bf)
+      (λ () (mk-ival +inf.bf)))
+
+    (register-fl-constant! 'NAN
+      (λ () (real->float +nan.0 es nbits))
+      (λ () +nan.bf)
+      (λ () (mk-ival +nan.bf)))
 
     (register-fl-operator! '- 'neg 1 (float-neg es nbits) bf- ival-neg)
     (register-fl-operator! '+ '+ 2 (float-add es nbits) bf+ ival-add)
