@@ -92,7 +92,7 @@
     (register-fl-operator! '/ '/ 2 (gfl-op es nbits gfl/) bf/ ival-div /)
     (register-fl-operator! 'sqrt 'sqrt 1 (gfl-op es nbits gflsqrt) bfsqrt ival-sqrt sqrt)
     (register-fl-operator! 'cbrt 'cbrt 1 (gfl-op es nbits gflcbrt) bfcbrt ival-cbrt (curryr expt 1/3))
-    (register-fl-operator! 'abs 'abs 1 (gfl-op es nbits gflabs) bfabs ival-fabs abs)
+    (register-fl-operator! 'fabs 'fabs 1 (gfl-op es nbits gflabs) bfabs ival-fabs abs)
 
     (register-fl-operator! 'log 'log 1 (gfl-op es nbits gfllog) bflog ival-log log)
     (register-fl-operator! 'log2 'log2 1 (gfl-op es nbits gfllog2) bflog2 ival-log2 (curryr log 2))
