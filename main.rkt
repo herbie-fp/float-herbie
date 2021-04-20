@@ -1,6 +1,6 @@
 #lang racket
 
-(require herbie/plugin math/bigfloat math/base rival generic-flonum)
+(require herbie/plugin math/bigfloat math/base generic-flonum)
 
 (eprintf "Loading generic float support...\n")
 
@@ -33,12 +33,13 @@
    [(list 'float es nbits)
 
     ; Float
-    (define (register-fl-constant! cnst fl-impl bf-impl ival-impl)
+    (define (register-fl-constant! cnst fl-impl #:bf [bf-impl #f] #:ival [ival-impl #f])
       (define cnst-name (sym-append cnst '.fl es '- nbits))
-      (define info-dict
+      (define base-dict
         (list (cons 'fl fl-impl)
               (cons 'bf bf-impl)
               (cons 'ival ival-impl)))
+      (define info-dict (filter cdr base-dict))
       (register-constant! cnst cnst-name name info-dict))
 
     ; Operator
@@ -62,24 +63,16 @@
       (disjoin gflinfinite? gflnan?))
 
     (register-fl-constant! 'PI
-      (λ () (gfl-const es nbits pi.gfl))
-      (λ () pi.bf)
-      ival-pi)
+      (λ () (gfl-const es nbits pi.gfl)))
 
     (register-fl-constant! 'E
-      (λ () (gfl-const es nbits (gflexp 1.gfl)))
-      (λ () (bfexp 1.bf))
-      ival-e)
+      (λ () (gfl-const es nbits (gflexp 1.gfl))))
 
     (register-fl-constant! 'INFINITY
-      (λ () +inf.gfl)
-      (λ () +inf.bf)
-      (λ () (mk-ival +inf.bf)))
+      (λ () +inf.gfl))
 
     (register-fl-constant! 'NAN
-      (λ () +nan.gfl)
-      (λ () +nan.bf)
-      (λ () (mk-ival +nan.bf)))
+      (λ () +nan.gfl))
 
     (register-fl-operator! '- 'neg 1 (gfl-op es nbits gfl-))
     (register-fl-operator! '+ '+ 2 (gfl-op es nbits gfl+))
