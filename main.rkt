@@ -40,7 +40,7 @@
               (cons 'bf bf-impl)
               (cons 'ival ival-impl)))
       (define info-dict (filter cdr base-dict))
-      (register-constant! cnst cnst-name name info-dict))
+      (register-constant-impl! cnst cnst-name name info-dict))
 
     ; Operator
     (define (register-fl-operator! op op-name argc fl-impl
@@ -51,7 +51,7 @@
                               (cons 'ival ival-impl) (cons 'itype itype) (cons 'otype otype)))
       (define info-dict (filter cdr base-dict))
       (define op-name* (sym-append op-name '.fl es '- nbits))
-      (register-operator! op op-name* (make-list argc name) name info-dict))
+      (register-operator-impl! op op-name* (make-list argc name) name info-dict))
   
     ; Representation
     (register-representation! name 'real gfl?
