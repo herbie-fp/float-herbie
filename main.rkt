@@ -8,10 +8,6 @@
   (for/and ([left args] [right (cdr args)])
     (test left right)))
 
-(define ((inv-comparator test) . args)
-  (for/or ([left args] [right (cdr args)])
-    (not (test left right))))
-
 (define (from-bigfloat bff)
   (λ args (bigfloat->flonum (apply bff (map bf args)))))
 
@@ -74,7 +70,7 @@
     (register-fl-constant! 'NAN
       (λ () +nan.gfl))
 
-    (register-fl-operator! '- 'neg 1 (gfl-op es nbits gfl-))
+    (register-fl-operator! 'neg 'neg 1 (gfl-op es nbits gfl-))
     (register-fl-operator! '+ '+ 2 (gfl-op es nbits gfl+))
     (register-fl-operator! '- '- 2 (gfl-op es nbits gfl-))
     (register-fl-operator! '* '* 2 (gfl-op es nbits gfl*))
@@ -108,7 +104,7 @@
     (register-fl-operator! 'atanh 'atanh 1 (gfl-op es nbits gflatanh))
 
     (register-fl-operator! '== '== 2 (comparator gfl=) #:itype name #:otype 'bool) ; override number of arguments
-    (register-fl-operator! '!= '!= 2 (inv-comparator gfl=) #:itype name #:otype 'bool) ; override number of arguments
+    (register-fl-operator! '!= '!= 2 (negate (comparator gfl=)) #:itype name #:otype 'bool) ; override number of arguments
     (register-fl-operator! '< '< 2 (comparator gfl<) #:itype name #:otype 'bool) ; override number of arguments
     (register-fl-operator! '> '> 2 (comparator gfl>) #:itype name #:otype 'bool) ; override number of arguments
     (register-fl-operator! '<= '<= 2 (comparator gfl<=) #:itype name #:otype 'bool) ; override number of arguments
