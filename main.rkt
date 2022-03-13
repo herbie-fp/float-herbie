@@ -36,7 +36,7 @@
               (cons 'bf bf-impl)
               (cons 'ival ival-impl)))
       (define info-dict (filter cdr base-dict))
-      (register-constant-impl! cnst cnst-name name info-dict))
+      (register-operator-impl! cnst cnst-name (list) name info-dict))
 
     ; Operator
     (define (register-fl-operator! op op-name argc fl-impl
