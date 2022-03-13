@@ -28,7 +28,7 @@
   (match name
    [(list 'float es nbits)
 
-    ; Float
+    ; Constant registration
     (define (register-fl-constant! cnst fl-impl #:bf [bf-impl #f] #:ival [ival-impl #f])
       (define cnst-name (sym-append cnst '.fl es '- nbits))
       (define base-dict
@@ -36,18 +36,19 @@
               (cons 'bf bf-impl)
               (cons 'ival ival-impl)))
       (define info-dict (filter cdr base-dict))
-      (register-operator-impl! cnst cnst-name (list) name info-dict))
+      (define repr (get-representation name))
+      (register-operator-impl! cnst cnst-name (list) repr info-dict))
 
-    ; Operator
+    ; Operator registration
     (define (register-fl-operator! op op-name argc fl-impl
                                    #:bf [bf-impl #f] #:ival [ival-impl #f]
-                                   #:nonffi [nonffi-imlp #f]
-                                   #:itype [itype #f] #:otype [otype #f])
-      (define base-dict (list (cons 'fl fl-impl) (cons 'bf bf-impl) (cons 'ival ival-impl)
-                              (cons 'ival ival-impl) (cons 'itype itype) (cons 'otype otype)))
+                                   #:nonffi [nonffi-imlp #f] #:otype [otype #f])
+      (define base-dict (list (cons 'fl fl-impl) (cons 'bf bf-impl) (cons 'ival ival-impl)))
       (define info-dict (filter cdr base-dict))
       (define op-name* (sym-append op-name '.fl es '- nbits))
-      (register-operator-impl! op op-name* (make-list argc name) name info-dict))
+      (define repr (get-representation name))
+      (define orepr (if otype (get-representation otype) repr))
+      (register-operator-impl! op op-name* (make-list argc repr) orepr info-dict))
   
     ; Representation
     (register-representation! name 'real gfl?
@@ -103,12 +104,12 @@
     (register-fl-operator! 'acosh 'acosh 1 (gfl-op es nbits gflacosh))
     (register-fl-operator! 'atanh 'atanh 1 (gfl-op es nbits gflatanh))
 
-    (register-fl-operator! '== '== 2 (comparator gfl=) #:itype name #:otype 'bool) ; override number of arguments
-    (register-fl-operator! '!= '!= 2 (negate (comparator gfl=)) #:itype name #:otype 'bool) ; override number of arguments
-    (register-fl-operator! '< '< 2 (comparator gfl<) #:itype name #:otype 'bool) ; override number of arguments
-    (register-fl-operator! '> '> 2 (comparator gfl>) #:itype name #:otype 'bool) ; override number of arguments
-    (register-fl-operator! '<= '<= 2 (comparator gfl<=) #:itype name #:otype 'bool) ; override number of arguments
-    (register-fl-operator! '>= '>= 2 (comparator gfl>=) #:itype name #:otype 'bool) ; override number of arguments
+    (register-fl-operator! '== '== 2 (comparator gfl=) #:otype 'bool)
+    (register-fl-operator! '!= '!= 2 (negate (comparator gfl=)) #:otype 'bool)
+    (register-fl-operator! '< '< 2 (comparator gfl<) #:otype 'bool)
+    (register-fl-operator! '> '> 2 (comparator gfl>) #:otype 'bool)
+    (register-fl-operator! '<= '<= 2 (comparator gfl<=) #:otype 'bool)
+    (register-fl-operator! '>= '>= 2 (comparator gfl>=) #:otype 'bool)
 
     #t]
    [_ #f]))
