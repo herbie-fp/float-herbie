@@ -2,5 +2,5 @@
 
 (FPCore (a x)
  :name "expax (section 3.5)"
- :precision (float 5 16)
+ :precision binary16
  (- (exp (* a x)) 1))

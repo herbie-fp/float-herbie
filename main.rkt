@@ -24,31 +24,9 @@
     cnst))
 
 ;; Generator for fixed-point representations
-(define (generate-floating-point name)
+(define (generate-floating-point* name)
   (match name
    [(list 'float es nbits)
-
-    ; Constant registration
-    (define (register-fl-constant! cnst fl-impl #:bf [bf-impl #f] #:ival [ival-impl #f])
-      (define cnst-name (sym-append cnst '.fl es '- nbits))
-      (define base-dict
-        (list (cons 'fl fl-impl)
-              (cons 'bf bf-impl)
-              (cons 'ival ival-impl)))
-      (define info-dict (filter cdr base-dict))
-      (define repr (get-representation name))
-      (register-operator-impl! cnst cnst-name (list) repr info-dict))
-
-    ; Operator registration
-    (define (register-fl-operator! op op-name argc fl-impl
-                                   #:bf [bf-impl #f] #:ival [ival-impl #f]
-                                   #:nonffi [nonffi-imlp #f] #:otype [otype #f])
-      (define base-dict (list (cons 'fl fl-impl) (cons 'bf bf-impl) (cons 'ival ival-impl)))
-      (define info-dict (filter cdr base-dict))
-      (define op-name* (sym-append op-name '.fl es '- nbits))
-      (define repr (get-representation name))
-      (define orepr (if otype (get-representation otype) repr))
-      (register-operator-impl! op op-name* (make-list argc repr) orepr info-dict))
   
     ; Representation
     (register-representation! name 'real gfl?
@@ -58,6 +36,28 @@
       (gfl-op es nbits gfl->ordinal)
       nbits
       (disjoin gflinfinite? gflnan?))
+
+    (define repr (get-representation name))
+
+    ; Constant registration
+    (define (register-fl-constant! cnst fl-impl #:bf [bf-impl #f] #:ival [ival-impl #f])
+      (define cnst-name (sym-append cnst '.fl es '- nbits))
+      (define base-dict
+        (list (cons 'fl fl-impl)
+              (cons 'bf bf-impl)
+              (cons 'ival ival-impl)))
+      (define info-dict (filter cdr base-dict))
+      (register-operator-impl! cnst cnst-name (list) repr info-dict))
+
+    ; Operator registration
+    (define (register-fl-operator! op op-name argc fl-impl
+                                   #:bf [bf-impl #f] #:ival [ival-impl #f]
+                                   #:nonffi [nonffi-imlp #f] #:otype [otype #f])
+      (define base-dict (list (cons 'fl fl-impl) (cons 'bf bf-impl) (cons 'ival ival-impl)))
+      (define info-dict (filter cdr base-dict))
+      (define op-name* (sym-append op-name '.fl es '- nbits))
+      (define orepr (if otype (get-representation otype) repr))
+      (register-operator-impl! op op-name* (make-list argc repr) orepr info-dict))
 
     (register-fl-constant! 'PI
       (λ () (gfl-const es nbits pi.gfl)))
@@ -111,7 +111,35 @@
     (register-fl-operator! '<= '<= 2 (comparator gfl<=) #:otype 'bool)
     (register-fl-operator! '>= '>= 2 (comparator gfl>=) #:otype 'bool)
 
-    #t]
+    repr]
    [_ #f]))
+
+(define (generate-floating-point name)
+  (match name
+   ['binary256
+    (define repr (generate-floating-point* '(float 19 256)))
+    (register-representation! name repr)]
+   ['binary128
+    (define repr (generate-floating-point* '(float 15 128)))
+    (register-representation! name repr)]
+   ['binary80
+    (define repr (generate-floating-point* '(float 15 80)))
+    (register-representation! name repr)]
+   ['pxr24
+    (define repr (generate-floating-point* '(float 8 24)))
+    (register-representation! name repr)]
+   ['fp24
+    (define repr (generate-floating-point* '(float 7 24)))
+    (register-representation! name repr)]
+   ['tensorfloat
+    (define repr (generate-floating-point* '(float 8 19)))
+    (register-representation! name repr)]
+   ['bfloat16
+    (define repr (generate-floating-point* '(float 8 16)))
+    (register-representation! name repr)]
+   ['binary16
+    (define repr (generate-floating-point* '(float 5 16)))
+    (register-representation! name repr)]
+   [_ (generate-floating-point* name)]))
 
 (register-generator! generate-floating-point)
