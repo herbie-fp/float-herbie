@@ -116,30 +116,49 @@
 
 (define (generate-floating-point name)
   (match name
+   ; This plugin is slow!! Use Herbie's built-in equivalents if possible.
+   [(list 'float 11 64)
+    (define repr (get-representation 'binary64))
+    (register-representation-alias! name repr)
+    repr]
+   [(list 'float 8 32)
+    (define repr (get-representation 'binary32))
+    (register-representation-alias! name repr)
+    repr]
+   ; Helpful aliases
    ['binary256
     (define repr (generate-floating-point* '(float 19 256)))
-    (register-representation! name repr)]
+    (register-representation-alias! name repr)
+    repr]
    ['binary128
     (define repr (generate-floating-point* '(float 15 128)))
-    (register-representation! name repr)]
+    (register-representation-alias! name repr)
+    repr]
    ['binary80
     (define repr (generate-floating-point* '(float 15 80)))
-    (register-representation! name repr)]
+    (register-representation-alias! name repr)
+    repr]
    ['pxr24
     (define repr (generate-floating-point* '(float 8 24)))
-    (register-representation! name repr)]
+    (register-representation-alias! name repr)
+    repr]
    ['fp24
     (define repr (generate-floating-point* '(float 7 24)))
-    (register-representation! name repr)]
+    (register-representation-alias! name repr)
+    repr]
    ['tensorfloat
     (define repr (generate-floating-point* '(float 8 19)))
-    (register-representation! name repr)]
+    (register-representation-alias! name repr)
+    repr]
    ['bfloat16
     (define repr (generate-floating-point* '(float 8 16)))
-    (register-representation! name repr)]
+    (register-representation-alias! name repr)
+    repr]
    ['binary16
     (define repr (generate-floating-point* '(float 5 16)))
-    (register-representation! name repr)]
+    (register-representation-alias! name repr)
+    repr]
+   ; Default
    [_ (generate-floating-point* name)]))
 
 (register-generator! generate-floating-point)
