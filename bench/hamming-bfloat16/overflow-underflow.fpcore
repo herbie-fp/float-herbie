@@ -1,0 +1,6 @@
+; -*- mode: scheme -*-
+
+(FPCore (x)
+ :name "expq2 (section 3.11)"
+ :precision bfloat16
+ (/ (exp x) (- (exp x) 1)))

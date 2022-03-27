@@ -1,0 +1,6 @@
+; -*- mode: scheme -*-
+
+(FPCore (a x)
+ :name "expax (section 3.5)"
+ :precision bfloat16
+ (- (exp (* a x)) 1))
